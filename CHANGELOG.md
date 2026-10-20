@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.0
+- Renamed to Charge Warning: the mod is sound only now.
+- Removed Auto unsafe mode: since the 7.2.0 game patch the game remembers each support weapon's fire mode, so your Railgun keeps Unsafe by itself. No Bingus Shared Loader needed any more.
+- Rebuilt on the 7.2.0 game sounds for the Railgun and the Epoch (the patch changed both). Same warning, timing and volume options.
+- New art.
+
 ## 3.0.1
 - Auto unsafe mode: a new Railgun now always starts in Unsafe, also when the game reuses an earlier weapon's id for it (for example in the next mission).
 - Auto unsafe mode: if the game refuses one of its changes halfway, everything it already changed is put back.

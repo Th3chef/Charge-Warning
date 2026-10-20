@@ -1,4 +1,4 @@
-# build outputs and game-derived files (the build extracts the game's railgun sound bank from your install)
+# build outputs and game-derived files (the build extracts the Railgun's and the Epoch's sound banks from your install)
 src/build/
 src/game/*.main
 src/game/game_ids.txt
