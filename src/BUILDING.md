@@ -1,19 +1,19 @@
-# Charge Warning & Auto Unsafe - source (formerly Railgun Warning & Auto Unsafe / Railgun Overcharge Warning)
+# Charge Warning - source (formerly Charge Warning & Auto Unsafe, Railgun Warning & Auto Unsafe and Railgun Overcharge Warning)
 
 Builds the mod from the game's own weapon sound banks (RS-422 Railgun and PLAS-45 Epoch). Nothing in here comes from
-another mod.
+another mod. Since 3.1.0 the mod is sound banks only: no Lua, no Bingus Shared Loader.
 
     tools/sound.py     the warning sound (synthesized; writes assets/warning.wav, the released take, and
                        assets/warning.json, the cue: when the first warning beep starts inside the sound)
-    tools/art.py       thumbnail, Nexus header, gallery, GitHub social preview and Arsenal option icons, drawn from the
+    tools/art.py       thumbnail, Nexus header, gallery, GitHub social preview, AyakaMods cover and Arsenal option icons, drawn from the
                        sound and its cue (Playwright Chromium, Anton + Barlow Condensed in art/fonts)
     tools/wwise_bank.py  small reader/writer for the game's Wwise banks
-    tools/build.py     adds a warning to each weapon's bank and writes build/Charge-Warning-and-Auto-Unsafe-<ver>.zip
+    tools/build.py     adds a warning to each weapon's bank and writes build/Charge-Warning-<ver>.zip
     tools/discover.py  finds each bank's charge event, release event, shot event, charge value and mixer by what
                        they do (any game version)
-    tools/verify.py    offline check of a built zip against the game banks (build.py runs it on every zip)
+    tools/verify.py    offline check of a built zip against the game banks, and that the zip holds nothing else
+                       (build.py runs it on every zip)
     tools/update.py    after a game patch: re-extracts both banks and deps and rebuilds only if a weapon's audio changed
-    tools/auto_unsafe.lua  the "Auto unsafe mode" option: a Bingus Shared Loader Lua addon (build.py fills in the version)
 
 ## The weapons (build.py WEAPONS)
 | weapon | bank | first beep | volume gate (charge value) | new object ids |
@@ -26,22 +26,15 @@ charge event (delayed so the sound's cue lands on the first-beep time) and Stops
 (found by its name, wep_<bank>_fire) and any other event that cuts the charge sounds (the Epoch has one).
 Retune by hand only if the game changes a weapon's charge: end_at_s and the gate in WEAPONS.
 
-## Auto unsafe mode option
-A Lua addon in the option folder "Auto Unsafe" (Bingus Shared Loader v19 or newer; older loaders still work). Every
-0.25 s it reads your helldiver's support weapon from its loadout slot (the slot's address is found through your
-owner row and loadout and re-checked every 2 s or when your helldiver changes); a Railgun it hasn't seen yet in Safe
-gets Unsafe written once into the weapon component's mode entry (weapon manager +96, 12 bytes per weapon: +0 fire
-mode 5 Safe / 6 Unsafe, +5 flag 16 in Unsafe) and into the record's copy (+24, which the game refreshes from the
-entry every frame). A weapon only counts as a Railgun when its entity type in the game's owner table (its row count
-is read from the game's code too) is the RS-422 Railgun's (resource hash 2e9d0bdc48b09e60) and that row is marked as
-ours: the Arc Thrower and the Epoch use the same fire mode numbers. All game addresses come from code-pattern scans
-(with v19: once every addon has loaded, via after_startup), remembered per game build in
-%LOCALAPPDATA%\RailgunAutoUnsafe.cache (every cached spot is re-checked against its pattern, otherwise a full
-rescan). The entry must match the copy and all three write targets must be writable before anything is written, and
-if a write still fails, whatever was already written is put back. Log: RailgunAutoUnsafe.log in the loader's log
-folder (numbered test builds: Logs\test).
-    python build.py            release + -Tester.zip (extra log lines, test GUID)
-    python build.py test N     numbered test build
+## Builds
+    python build.py            the release (live GUID kept from Railgun Overcharge Warning, so Arsenal updates in place)
+    python build.py test N     numbered test build ("<version> Test N", its own GUID; installs next to the release)
+No log, so no Tester zip.
+
+## Auto unsafe mode (removed in 3.1.0)
+2.0.0 to 3.0.1 had an "Auto unsafe mode" option (a Bingus Shared Loader Lua addon that switched every new Railgun to
+Unsafe). Since the 7.2.0 game patch the game remembers each support weapon's fire mode across uses and sessions, so
+the option was dropped; its code stays in the repo's history (tag v3.0.1).
 
 ## Volume options
 Each weapon has its own Arsenal option (on/off) with pick-one SubOptions Loud / Medium / Quiet (folders
@@ -51,11 +44,13 @@ level ships a full copy of that weapon's bank, because that is how the game load
 ## After a game patch (one command)
     cd tools
     python update.py --filediver <path to filediver> --gamedir <Helldivers 2 folder that contains "data">
+    python update.py --hd2raw <path to hd2raw> --gamedir ...    (3.1.0; hd2raw is in Better Bubble Shields' kit,
+                                                                 tools/hd2raw: faster, no stall over slow links)
 
 - Unchanged audio for both weapons (bank and dep): "no update needed" (exit 0).
 - A weapon's audio changed: it extracts the game's new bank(s), re-finds every hook by what it does, rebuilds
-  build/Charge-Warning-and-Auto-Unsafe-<ver>.zip (checked by verify.py) and lists anything that moved (exit 2).
-  `--version 3.0.1` sets the new version number.
+  build/Charge-Warning-<ver>.zip (checked by verify.py) and lists anything that moved (exit 2).
+  `--version 3.1.1` sets the new version number.
 - Exit 1: Filediver failed, or a bank changed too much to hook automatically (or the Wwise version changed).
 
 What the mod adds is purely additive (one sound and its Play/Stop actions appended to existing events), so it never
