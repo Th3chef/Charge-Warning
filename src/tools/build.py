@@ -1,4 +1,4 @@
-"""Builds Charge Warning & Auto Unsafe (formerly Railgun Warning & Auto Unsafe, before that Railgun Overcharge Warning)
+"""Builds Charge Warning (formerly Charge Warning & Auto Unsafe, Railgun Warning & Auto Unsafe and Railgun Overcharge Warning)
 from the game's own weapon sound banks: the RS-422 Railgun's and (from 3.0.0) the PLAS-45 Epoch's charge warnings.
 
 Inputs (../game/, extracted from the game with Filediver, see README.md):
@@ -7,10 +7,11 @@ Inputs (../game/, extracted from the game with Filediver, see README.md):
     game_ids.txt (optional)                                    every object/audio id in the game's banks, for a clash check
     ../assets/warning.wav                                      the warning sound (sound.py)
     ../art/thumbnail_512.png, ../art/options/*.png             Arsenal icons (art.py)
-    auto_unsafe.lua                                            the "Auto unsafe mode" option (a Bingus Shared Loader addon)
 Output: ../build/<zip>, ready for Arsenal / the HD2 mod manager.
     python build.py            release
-    python build.py test N     test build N: "<version> Test N", its own GUID (installs next to the release), tester logging
+    python build.py test N     test build N: "<version> Test N", its own GUID (installs next to the release)
+Sound banks only since 3.1.0: no Lua, no Bingus Shared Loader. (The Auto unsafe mode option was removed in 3.1.0: the
+game remembers a support weapon's fire mode since the 7.2.0 patch.)
 Every zip is checked with verify.py before the build finishes; a failed check (or one that can't run) deletes it and
 stops the build. The zips are byte-reproducible: the same inputs give the same bytes (fixed entry times and order)."""
 import json, os, struct, sys, wave, zipfile
@@ -18,16 +19,16 @@ import hashlib
 import wwise_bank as wb
 from discover import discover
 
-NAME = 'Charge Warning & Auto Unsafe'
-FILE_BASE = 'Charge-Warning-and-Auto-Unsafe'      # zip names (no '&': Nexus file names allow only letters, digits, spaces and _ ' ( ) . -)
-VERSION = '3.0.1'
-GUID = 'c8736b4d-7681-43b3-ac5e-03314f2d7034'
+NAME = 'Charge Warning'
+FILE_BASE = 'Charge-Warning'      # zip names (no '&': Nexus file names allow only letters, digits, spaces and _ ' ( ) . -)
+VERSION = '3.1.0'
+GUID = 'c8736b4d-7681-43b3-ac5e-03314f2d7034'          # kept since Railgun Overcharge Warning: Arsenal updates in place
 GUID_TEST = '6cf144dc-0353-4f83-9da1-b57f2875bce7'   # test builds
 TEST = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[1] == 'test' else 0
 DESCRIPTION = ('Charge warnings for the RS-422 Railgun (unsafe mode) and the PLAS-45 Epoch: a growling electric surge with '
                'fast warning beeps that start exactly when the charge does full damage (Railgun 90%, Epoch full charge), so '
                'you know when to fire before it overloads. Silent on quick shots, and it stops the moment you fire or let go. '
-               'Option: Auto unsafe mode - every new Railgun you pick up starts in Unsafe (needs Bingus Shared Loader v19 or newer).')
+               'Sound only: no scripts, no Bingus Shared Loader needed.')
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -63,11 +64,6 @@ WEAPONS = [
                'Untick to turn it off; pick how loud it plays.'),
 ]
 STOP_FADE_MS = 100
-
-# ---- Arsenal "Auto unsafe mode" option: a Bingus Shared Loader Lua addon in its own folder (on by default)
-AUTO_UNSAFE_DIR = 'Auto Unsafe'
-AUTO_UNSAFE_MODULE = 'mods/chef/railgun_auto_unsafe'
-LUA_TYPE = 0xA14E8DFA2CD117E2
 
 ARCHIVE = '9ba626afa44a3aa3.patch_0'
 T_BANK, T_DEP = 0x535A7BD3E650D799, 0xAF32095C82F2B070
@@ -175,45 +171,26 @@ def resource_hash(name):
     return h
 
 
-def auto_unsafe_archive(tester=False):
-    """The option's patch: one plaintext Lua addon resource ('-- HD2-Addon: <module>' first line) in a Lua archive."""
-    with open(os.path.join(HERE, 'auto_unsafe.lua'), encoding='utf-8') as f:
-        src = f.read()
-    for a, b in (('@@VERSION@@', VERSION + (' Test %d' % TEST if TEST else '')), ('@@TESTER@@', 'true' if TEST or tester else 'false'),
-                 ('@@TESTBUILD@@', 'true' if TEST else 'false')):
-        assert src.count(a) == 1, a
-        src = src.replace(a, b)
-    assert src.startswith('-- HD2-Addon: ' + AUTO_UNSAFE_MODULE + '\n')
-    data = src.encode('utf-8')
-    data = struct.pack('<II', len(data), 2) + data
-    rows_at = 72 + 32
-    pos = rows_at + 80
-    row = struct.pack('<7Q6I', resource_hash(AUTO_UNSAFE_MODULE), LUA_TYPE, pos, 0, 0, 0, 0, len(data), 0, 0, 16, 16, 0)
-    total = pos + len(data)
-    head = struct.pack('<III', 0xF0000011, 1, 1) + b'\0' * 20 + struct.pack('<I', total) + b'\0' * 36
-    return head + struct.pack('<QQQII', 0, LUA_TYPE, 1, 16, 16) + row + data
-
-
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)       # ((3.0.1 review) every zip entry gets this time, so a rebuild is byte-identical)
 
 
-def zip_entries(manifest, variants, tester=False):
+def zip_entries(manifest, variants):
     """The zip's entries in their fixed order: (name, bytes)."""
     def png(*parts):
         with open(os.path.join(ROOT, 'art', *parts), 'rb') as f:
             return f.read()
     out = [('manifest.json', json.dumps(manifest, indent=2).encode('utf-8')), ('thumbnail.png', png('thumbnail_512.png'))]
-    for icon in sorted({w['icon'] for w in WEAPONS} | {'unsafe'} | {lv[3] for lv in VOLUME_LEVELS}):
+    for icon in sorted({w['icon'] for w in WEAPONS} | {lv[3] for lv in VOLUME_LEVELS}):
         out.append(('options/%s.png' % icon, png('options', icon + '.png')))
-    for folder, archive in variants + [(AUTO_UNSAFE_DIR, auto_unsafe_archive(tester))]:
+    for folder, archive in variants:
         out += [(folder + '/' + ARCHIVE, archive), (folder + '/' + ARCHIVE + '.gpu_resources', b''),
                 (folder + '/' + ARCHIVE + '.stream', b'')]
     return out
 
 
-def write_zip(zip_path, manifest, variants, tester=False):
+def write_zip(zip_path, manifest, variants):
     with zipfile.ZipFile(zip_path, 'w') as z:
-        for name, data in zip_entries(manifest, variants, tester):
+        for name, data in zip_entries(manifest, variants):
             # ((3.0.1 review) fixed time, compression, system and attributes: nothing from the clock or the file system)
             info = zipfile.ZipInfo(name, ZIP_TIME)
             info.compress_type = zipfile.ZIP_DEFLATED
@@ -249,10 +226,6 @@ def main():
             sub_options.append({'Name': label, 'Description': blurb, 'Image': 'options/%s.png' % icon, 'Include': [folder]})
         options.append({'Name': w['option'], 'Image': 'options/%s.png' % w['icon'], 'Description': w['blurb'],
                         'SubOptions': sub_options})
-    options.append({'Name': 'Auto unsafe mode', 'Image': 'options/unsafe.png', 'Include': [AUTO_UNSAFE_DIR],
-                    'Description': 'Every new Railgun you pick up starts in Unsafe mode instead of Safe. It is set once '
-                                   'per Railgun: switch back to Safe and it stays Safe. Only your own Railgun. Needs '
-                                   'Bingus Shared Loader v19 or newer; turn it off if you don\'t use the loader.'})
     base = os.path.join(ROOT, 'build', FILE_BASE + '-' + VERSION)
     if TEST:
         manifest = {'Version': 1, 'Guid': GUID_TEST, 'Name': '%s %s Test %d' % (NAME, VERSION, TEST),
@@ -260,13 +233,8 @@ def main():
                     'IconPath': 'thumbnail.png', 'Options': options}
         write_zip(base + '-Test-%d.zip' % TEST, manifest, variants)
     else:
-        # the release, and its Tester (the same build with the extra log lines, on the test GUID)
         write_zip(base + '.zip', {'Version': 1, 'Guid': GUID, 'Name': NAME, 'Description': DESCRIPTION,
-                                  'IconPath': 'thumbnail.png', 'Options': options}, variants)
-        write_zip(base + '-Tester.zip', {'Version': 1, 'Guid': GUID_TEST, 'Name': '%s %s (Tester)' % (NAME, VERSION),
-                                         'Description': 'PERSONAL TESTER BUILD: the release plus extra log lines. Install '
-                                                        'instead of the release, not next to it. ' + DESCRIPTION,
-                                         'IconPath': 'thumbnail.png', 'Options': options}, variants, tester=True)
+                                  'IconPath': 'thumbnail.png', 'Options': options}, variants)   # no log, so no Tester zip
     for folder, archive in variants:                                          # the Loud levels, for checks
         if folder.endswith('/Loud'):
             with open(os.path.join(ROOT, 'build', folder.split('/')[0].lower() + '.' + ARCHIVE), 'wb') as f:

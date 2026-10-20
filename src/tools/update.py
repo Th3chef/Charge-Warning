@@ -3,16 +3,19 @@ content/audio/wep_railgun, the PLAS-45 Epoch's content/audio/wep_plasma_blaster)
 top of the new sounds.
 
     python update.py --filediver <filediver executable> --gamedir <Helldivers 2 folder, the one containing 'data'>
-                     [--version 3.0.1]
+                     [--version <new version>]
+    python update.py --hd2raw <hd2raw executable> --gamedir ...      (3.1.0) the same with hd2raw, the small extractor on
+                     Filediver's reader in Better Bubble Shields' kit (tools/hd2raw): faster, and it doesn't stall when the
+                     game folder is reached over a slow or network link the way the Filediver CLI can
 
-1. Asks Filediver where each weapon's bank lives in the game (ignoring mod patch files) and extracts the game's own
-   bank and dep.
+1. Asks Filediver (or hd2raw) where each weapon's bank lives in the game (ignoring mod patch files) and extracts the
+   game's own bank and dep.
 2. Compares each bank and dep with the ones the current release was built from (../game/built_from.json).
    All the same -> "no update needed" (exit 0): the released mod keeps working as is.
    Any changed  -> copies both weapons' new banks and deps to the build's game folder (../game/, or RCW_GAME_DIR as for
                    build.py), rebuilds with build.py (every hook is found again by discover.py, and verify.py checks the
                    zips) and lists what moved (exit 2): test it in game, then release it.
-Exit 1 means something needs a person: Filediver failed, or a bank changed so much its hooks were not found."""
+Exit 1 means something needs a person: Filediver (or hd2raw) failed, or a bank changed so much its hooks were not found."""
 import argparse, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -61,9 +64,45 @@ def extract(filediver, gamedir, bank, tmp):
     return [os.path.join(src, f) for f in files]
 
 
+def extract_hd2raw(hd2raw, gamedir, bank, tmp):
+    """(3.1.0) The game's own bank + dep with hd2raw, or an error message. hd2raw reads a data folder that links only
+    the game's own archives, so installed mods (.patch_N files) can't stand in for the game's sounds."""
+    T = {'wwise_bank': '535a7bd3e650d799', 'wwise_dep': 'af32095c82f2b070'}
+    data = os.path.join(tmp, 'vanilla', 'data')
+    if not os.path.isdir(data):
+        os.makedirs(data)
+        src = os.path.join(gamedir, 'data')
+        for f in os.listdir(src):
+            if '.patch_' not in f:
+                os.symlink(os.path.join(src, f), os.path.join(data, f))
+    index = os.path.join(tmp, 'index.tsv')
+    if not os.path.exists(index):
+        code, out = run([hd2raw, data, 'index', index])
+        if code != 0:
+            return 'hd2raw could not read the game data folder:\n' + out[-2000:]
+    rid = '%016x' % build.resource_hash('content/audio/' + bank)
+    rows = [l.rstrip('\n').split('\t') for l in open(index)]
+    for t, th in T.items():
+        found = [r for r in rows if r[0] == rid and r[1] == th]
+        if len(found) != 1:
+            return 'content/audio/%s.%s: %d entries in the game, expected one' % (bank, t, len(found))
+    out_dir = os.path.join(tmp, bank)
+    code, out = run([hd2raw, data, 'get', out_dir] + ['%s.%s' % (rid, th) for th in T.values()])
+    files = []
+    for t, th in T.items():
+        got, want = os.path.join(out_dir, '0x%s.%s.main' % (rid, th)), os.path.join(out_dir, '%s.%s.main' % (bank, t))
+        if not os.path.exists(got):
+            return 'extraction of %s failed:\n%s' % (bank, out[-2000:])
+        os.replace(got, want)
+        files.append(want)
+    return files
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--filediver', required=True)
+    tool = ap.add_mutually_exclusive_group(required=True)
+    tool.add_argument('--filediver')
+    tool.add_argument('--hd2raw')
     ap.add_argument('--gamedir', required=True)
     ap.add_argument('--version')
     a = ap.parse_args()
@@ -73,7 +112,8 @@ def main():
     tmp = tempfile.mkdtemp()
     try:
         for w in build.WEAPONS:
-            got = extract(a.filediver, a.gamedir, w['bank'], tmp)
+            got = (extract_hd2raw(a.hd2raw, a.gamedir, w['bank'], tmp) if a.hd2raw
+                   else extract(a.filediver, a.gamedir, w['bank'], tmp))
             if isinstance(got, str):
                 print(got); return 1
             extracted += got

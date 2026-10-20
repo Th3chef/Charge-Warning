@@ -2,7 +2,8 @@
 the actual warning sound drawn as a waveform over a charge meter that reaches full damage exactly where the first
 warning beep starts (the cue from ../assets/warning.json); the beeps are drawn as red blocks after it.
 Outputs ../art/: thumbnail_1254.png, thumbnail_512.png (Arsenal), header_1300x372.png, gallery_1920x1080.png,
-GitHub-Social-1280x640.png (the repo's social preview), options/*.png (Arsenal option icons)."""
+GitHub-Social-1280x640.png (the repo's social preview), AyakaMods-Cover-1600x1000.png (the AyakaMods feature image),
+options/*.png (Arsenal option icons). No hazard-stripe bands (removed in 3.1.0)."""
 import base64, json, os, wave
 import numpy as np
 from PIL import Image
@@ -11,7 +12,7 @@ from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 ART = os.path.join(ROOT, 'art')
-BADGE = '3.0'
+BADGE = '3.1'
 RED = '#ff2d2d'
 with open(os.path.join(ROOT, 'assets', 'warning.json')) as _f:
     CUE = json.load(_f)                  # cue_s (first beep), length_s, beeps_s, beep_s, snap_s
@@ -80,7 +81,6 @@ def page(width, height, layout):
         background: radial-gradient(ellipse at {L['glow']}, rgba(80,200,255,0.20), rgba(0,0,0,0) 55%),
                     repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px {int(28*u)}px),
                     repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px {int(28*u)}px); }}
-      .stripe {{ position:absolute; {L['stripe']}; background: repeating-linear-gradient(-45deg, {YELLOW} 0 {int(18*u)}px, #111 {int(18*u)}px {int(36*u)}px); }}
       .scope {{ position:absolute; {L['scope']}; }}
       .badge {{ position:absolute; {L['badge']}; background:{YELLOW}; color:#0e0e10; font:{L['badge_size']}px Anton; padding:0 {int(L['badge_size']*0.28)}px; line-height:1.25; }}
       .tag {{ position:absolute; {L['tag']}; text-align:right; font-family:Barlow; font-weight:700; letter-spacing:0.04em; line-height:1.05; }}
@@ -91,13 +91,13 @@ def page(width, height, layout):
       .title .b {{ color:{YELLOW}; font-size:{L['t2']}px; letter-spacing:0.01em; }}
       .foot {{ position:absolute; {L['foot']}; color:#d8d8d8; font-family:Barlow; font-weight:500; font-size:{L['foot_size']}px; letter-spacing:0.06em; }}
       .mark {{ position:absolute; {L['mark']}; color:{YELLOW}; font-family:Barlow; font-weight:700; font-size:{L['mark_size']}px; letter-spacing:0.05em; }}
-    </style></head><body><div class="bg"></div><div class="stripe"></div>
+    </style></head><body><div class="bg"></div>
       <div class="scope">{scope(*L['scope_px'])}</div>
       <div class="mark">FULL DAMAGE</div>
       <div class="badge">{BADGE}</div>
       <div class="tag"><div class="a">KNOW EXACTLY</div><div class="b">WHEN TO FIRE</div></div>
-      <div class="title"><div class="a">CHARGE</div><div class="b">WARNING &amp; AUTO UNSAFE</div></div>
-      <div class="foot">RS-422 RAILGUN &nbsp;&bull;&nbsp; PLAS-45 EPOCH &nbsp;&bull;&nbsp; BEEPS AT FULL DAMAGE &nbsp;&bull;&nbsp; RAILGUN STARTS IN UNSAFE</div>
+      <div class="title"><div class="a">CHARGE</div><div class="b">WARNING</div></div>
+      <div class="foot">RS-422 RAILGUN &nbsp;&bull;&nbsp; PLAS-45 EPOCH &nbsp;&bull;&nbsp; BEEPS AT FULL DAMAGE &nbsp;&bull;&nbsp; SOUND ONLY, NO LOADER NEEDED</div>
     </body></html>'''
 
 
@@ -106,30 +106,37 @@ def px(v): return '%dpx' % v
 
 LAYOUTS = {
     'thumbnail_1254.png': (1254, 1254, dict(
-        glow='55% 42%', stripe='left:0; right:0; bottom:0; height:22px',
+        glow='55% 42%',
         scope='left:70px; top:300px', scope_px=(1114, 470), mark='left:%s; top:250px' % px(70 + CUE_FRAC * 1114 + 16), mark_size=40,
         badge='left:70px; top:70px', badge_size=92, tag='right:70px; top:74px', tag_size=46,
-        title='left:66px; top:830px', t1=150, t2=118, foot='left:72px; bottom:62px', foot_size=29)),
+        title='left:66px; top:800px', t1=170, t2=170, foot='left:72px; bottom:62px', foot_size=29)),
     'header_1300x372.png': (1300, 372, dict(
-        glow='75% 50%', stripe='left:0; right:0; bottom:0; height:10px',
+        glow='75% 50%',
         scope='left:640px; top:70px', scope_px=(610, 250), mark='left:%s; top:40px' % px(640 + CUE_FRAC * 610 + 10), mark_size=26,
         badge='left:40px; top:34px', badge_size=40, tag='right:1000px; top:1000px', tag_size=1,
-        title='left:38px; top:100px', t1=96, t2=56, foot='left:42px; bottom:30px', foot_size=21)),
+        title='left:38px; top:96px', t1=96, t2=96, foot='left:42px; bottom:30px', foot_size=21)),
     'gallery_1920x1080.png': (1920, 1080, dict(
-        glow='66% 40%', stripe='left:0; right:0; bottom:0; height:18px',
+        glow='66% 40%',
         scope='left:760px; top:230px', scope_px=(1090, 440), mark='left:%s; top:186px' % px(760 + CUE_FRAC * 1090 + 16), mark_size=40,
         badge='left:64px; top:60px', badge_size=92, tag='right:70px; top:64px', tag_size=46,
-        title='left:60px; top:640px', t1=150, t2=112, foot='left:66px; bottom:52px', foot_size=34)),
+        title='left:60px; top:620px', t1=170, t2=170, foot='left:66px; bottom:52px', foot_size=34)),
     'GitHub-Social-1280x640.png': (1280, 640, dict(
-        glow='68% 38%', stripe='left:0; right:0; bottom:0; height:12px',
+        glow='68% 38%',
         scope='left:560px; top:150px', scope_px=(680, 240), mark='left:%s; top:116px' % px(560 + CUE_FRAC * 680 + 12), mark_size=26,
         badge='left:40px; top:40px', badge_size=60, tag='right:40px; top:40px', tag_size=30,
-        title='left:38px; top:378px', t1=104, t2=76, foot='left:42px; bottom:40px', foot_size=24)),
+        title='left:38px; top:330px', t1=112, t2=112, foot='left:42px; bottom:40px', foot_size=24)),
+    # AyakaMods feature image: the mod card crops it to about 1.2:1-1.6:1, so the title and badge stay inside the
+    # middle 1200 px
+    'AyakaMods-Cover-1600x1000.png': (1600, 1000, dict(
+        glow='60% 40%',
+        scope='left:640px; top:236px', scope_px=(740, 300), mark='left:%s; top:192px' % px(640 + CUE_FRAC * 740 + 14), mark_size=34,
+        badge='left:220px; top:90px', badge_size=86, tag='right:220px; top:94px', tag_size=40,
+        title='left:216px; top:590px', t1=146, t2=146, foot='left:222px; bottom:72px', foot_size=27)),
 }
 
 def option_icons():
     """Arsenal option icons (256x256): blurred crop of the art, yellow frame, a yellow speaker with 1-3 sound waves
-    (Quiet, Medium, Loud), the Auto unsafe padlock and the weapon icons."""
+    (Quiet, Medium, Loud) and the weapon icons."""
     from PIL import ImageDraw, ImageFilter
     os.makedirs(os.path.join(ART, 'options'), exist_ok=True)
     src = Image.open(os.path.join(ART, 'thumbnail_1254.png')).convert('RGB')
@@ -147,16 +154,6 @@ def option_icons():
             r = 140 + 80 * i
             d.arc([cx + 60 - r, cy - r, cx + 60 + r, cy + r], -48, 48, fill=Y, width=54)
         im.resize((256, 256), Image.LANCZOS).save(os.path.join(ART, 'options', name + '.png'))
-    # Auto unsafe mode: an open padlock (safety off) in yellow with a red shackle gap
-    im = back.copy()
-    d = ImageDraw.Draw(im)
-    d.rectangle([0, 0, 1023, 1023], outline=Y, width=56)
-    d.rounded_rectangle([262, 470, 762, 830], radius=60, fill=Y)                       # lock body
-    d.arc([322, 170, 622, 530], 180, 360, fill=Y, width=70)                             # shackle, swung open to the left
-    d.line([(357, 345), (357, 470)], fill=Y, width=70)
-    d.line([(587, 345), (587, 400)], fill=(255, 45, 45), width=70)                      # the open side, in red
-    d.ellipse([472, 590, 552, 670], fill=(14, 14, 16)); d.rectangle([497, 640, 527, 740], fill=(14, 14, 16))   # keyhole
-    im.resize((256, 256), Image.LANCZOS).save(os.path.join(ART, 'options', 'unsafe.png'))
     weapon_icons(back)
 
 

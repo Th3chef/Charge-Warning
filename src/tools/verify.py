@@ -6,7 +6,8 @@ For every weapon and volume level it re-reads the patched bank and checks that
     warning's id inserted into its sorted child list);
   - the warning sound sits under the charge mixer, follows the charge value with the weapon's gate, at the level's volume;
   - the charge event plays it with the delay that puts its first beep on the weapon's full-damage moment;
-  - it is stopped on release (charge-end), on the shot and on every other event that cuts the charge sounds.
+  - it is stopped on release (charge-end), on the shot and on every other event that cuts the charge sounds;
+  - the zip holds exactly the two weapon options and their sound patches, nothing else (3.1.0).
 Exit 0 = all good, 1 = something is wrong (it says what). build.py also treats a check that can't run as failed."""
 import io, json, os, struct, sys, wave, zipfile
 import wwise_bank as wb
@@ -125,6 +126,27 @@ def check(z):
         print('%-15s beeps start %.2f s into the charge (play delay %d ms), gate %.2f-%.2f, stops on %d events' % (
             wp['title'], delay / 1000.0 + cue_s, delay, wp['silent_up_to'], wp['full_from'],
             1 + bool(hook['fire_event']) + len(hook['other_stoppers'])))
+    # 5. (3.1.0 review) the zip holds exactly what the build ships: the two weapon options with their volume levels, the
+    #    icons and the sound patches. Nothing else (a stray Lua addon or a folder from an older version) can ship.
+    want_opts = [wp['option'] for wp in B.WEAPONS]
+    got_opts = [o['Name'] for o in manifest['Options']]
+    if got_opts != want_opts:
+        problems.append('manifest options are %s, expected %s' % (got_opts, want_opts))
+    want = {'manifest.json', 'thumbnail.png'} | {'options/%s.png' % i for i in {wp['icon'] for wp in B.WEAPONS} |
+                                                 {lv[3] for lv in B.VOLUME_LEVELS}}
+    for wp in B.WEAPONS:
+        for lv in B.VOLUME_LEVELS:
+            folder = wp['folder'] + '/' + lv[0].split(' (')[0]
+            want |= {folder + '/' + B.ARCHIVE + x for x in ('', '.gpu_resources', '.stream')}
+    names = set(z.namelist())
+    if names != want:
+        problems.append('zip contents differ from the build: extra %s, missing %s' % (sorted(names - want), sorted(want - names)))
+    for n in names:
+        if '.patch_' in n and not n.endswith(('.gpu_resources', '.stream')):
+            arc = z.read(n)
+            types = [struct.unpack_from('<Q', arc, 72 + 32 * i + 8)[0] for i in range(u32(arc, 4))]
+            if sorted(types) != sorted([B.T_BANK, B.T_DEP]):
+                problems.append('%s: holds resource types %s, expected only a sound bank and its dep' % (n, ['%016x' % t for t in types]))
     for p in problems:
         print('PROBLEM:', p)
     print('all checks passed' if not problems else '%d problem(s)' % len(problems))
