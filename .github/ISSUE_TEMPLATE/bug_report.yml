@@ -1,23 +1,23 @@
 name: Bug report
-description: A warning or Auto unsafe mode doesn't work as described
+description: A warning doesn't work as described
 labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: Thanks for the report! If it's about Auto unsafe mode, please attach its log and the loader's (RailgunAutoUnsafe.log and BingusSharedLoader.log in %LOCALAPPDATA%\CowboyBingus\Helldivers2\Logs).
+      value: Thanks for the report! The mod is sound only and writes no log, so please describe what you heard and when.
   - type: input
     id: version
     attributes:
       label: Mod version
-      placeholder: 3.0.1
+      placeholder: 3.1.0
     validations:
       required: true
   - type: textarea
     id: options
     attributes:
       label: Options
-      description: Railgun warning and Epoch warning (on/off and volume), whether Auto unsafe mode is ticked, and your Bingus Shared Loader version.
-      placeholder: "Railgun warning Loud, Epoch warning Medium, Auto unsafe mode on, Bingus Shared Loader v19."
+      description: Railgun warning and Epoch warning (on/off and volume).
+      placeholder: "Railgun warning Loud, Epoch warning Medium."
     validations:
       required: true
   - type: input
@@ -30,7 +30,7 @@ body:
     id: what
     attributes:
       label: What happened
-      description: What you expected and what you heard or saw. Solo, hosting or joining someone else's game?
+      description: What you expected and what you heard. Which weapon, safe or unsafe mode (Railgun), solo, hosting or joining someone else's game?
     validations:
       required: true
   - type: textarea
@@ -38,8 +38,3 @@ body:
     attributes:
       label: Other mods
       description: Other mods that change the Railgun, the Epoch or their sounds, and your mod manager.
-  - type: textarea
-    id: logs
-    attributes:
-      label: Log
-      description: Drag RailgunAutoUnsafe.log and BingusSharedLoader.log here (Auto unsafe mode only; the warning sounds have no log).
