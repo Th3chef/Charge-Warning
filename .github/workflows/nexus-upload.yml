@@ -46,9 +46,9 @@ jobs:
           fi
           # ((3.0.1 review) the release must be published and be neither a draft nor a pre-release, not just exist)
           [ "$STATE" = false ] || { echo "::error::$TAG is a draft or a pre-release: not uploaded."; exit 1; }
-          # tags are v3.0.0, v3.0.1, ...; the zip is Charge-Warning-and-Auto-Unsafe-3.0.0.zip and the Nexus version 3.0.0
+          # tags are v3.1.0, ...; the zip is Charge-Warning-3.1.0.zip (Charge-Warning-and-Auto-Unsafe-<ver>.zip up to 3.0.1) and the Nexus version 3.1.0
           VERSION="${TAG#v}"
-          FILE="Charge-Warning-and-Auto-Unsafe-${VERSION}.zip"
+          FILE="Charge-Warning-${VERSION}.zip"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$FILE"
           test -s "$FILE"
           unzip -tq "$FILE"
@@ -123,7 +123,7 @@ jobs:
           filename: ${{ env.FILE }}
           version: ${{ env.VERSION }}
           # (Nexus allows only letters, digits, spaces and _ ' ( ) . - in the name)
-          display_name: Charge Warning and Auto Unsafe
+          display_name: Charge Warning
           description: ${{ steps.desc.outputs.text }}
           changelog: ${{ steps.notes.outputs.text }}
           archive_existing_version: true
